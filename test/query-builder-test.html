@@ -1,0 +1,714 @@
+<!--
+Copyright 2017 Next Century Corporation
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../web-component-tester/browser.js"></script>
+  <link rel="import" href="../query-builder.html">
+</head>
+
+<body>
+  <test-fixture id="query-builder-fixture">
+    <template>
+      <query-builder></query-builder>
+    </template>
+  </test-fixture>
+
+  <script>
+    /* globals suite, setup, fixture, test, expect, flush */
+    /* jshint -W030 */
+
+    suite('query-builder private tests', function() {
+      var element;
+
+      setup(function() {
+        element = fixture('query-builder-fixture');
+        element.callback = {};
+      });
+
+      test('default properties are set correctly', function() {
+        expect(element.config).to.not.exist;
+        expect(element.data).to.not.exist;
+        expect(element.callbackDates).to.equal('dates');
+        expect(element.callbackTerms).to.equal('terms');
+        expect(element.matchAll).to.be.false;
+        expect(element.query).to.not.exist;
+      });
+
+      test('does have an elastic-client-query-builder element', function() {
+        expect(element.$$('elastic-client-query-builder')).to.exist;
+        expect(element.$$('elastic-client-query-builder').id).to.equal('builder');
+      });
+
+      test('_buildBooleanQuery does return correct query', function() {
+        var queries = [
+          element.$$('#builder').buildQuery('match', 'field', 'value'),
+          element.$$('#builder').buildQuery('term', '_all', 'term')
+        ];
+
+        expect(element._buildBooleanQuery(queries).toJSON()).to.deep.equal({
+          bool: {
+            must: [{
+              match: {
+                field: {
+                  query: 'value'
+                }
+              }
+            }, {
+              term: {
+                _all: {
+                  term: 'term'
+                }
+              }
+            }]
+          }
+        });
+      });
+
+      test('_buildDateRangeQuery does return null if callback.dates is undefined', function() {
+        expect(element._buildDateRangeQuery('field', {
+          start: {
+            date: '2017-01-01T00:00:00'
+          }
+        })).to.be.null;
+      });
+
+      test('_buildDateRangeQuery does return null if both start and end date are undefined', function() {
+        element.callback.dates = function(object) {
+          return [(object.start ? object.start.date : null), (object.end ? object.end.date : null)];
+        };
+
+        expect(element._buildDateRangeQuery('field', {})).to.be.null;
+      });
+
+      test('_buildDateRangeQuery does return correct query with start date', function() {
+        element.callback.dates = function(object) {
+          return [(object.start ? object.start.date : null), (object.end ? object.end.date : null)];
+        };
+
+        expect(element._buildDateRangeQuery('field', {
+          start: {
+            date: '2017-01-01T00:00:00'
+          }
+        }).toJSON()).to.deep.equal({
+          range: {
+            field: {
+              gte: '2017-01-01T00:00:00'
+            }
+          }
+        });
+      });
+
+      test('_buildDateRangeQuery does return correct query with end date', function() {
+        element.callback.dates = function(object) {
+          return [(object.start ? object.start.date : null), (object.end ? object.end.date : null)];
+        };
+
+        expect(element._buildDateRangeQuery('field', {
+          end: {
+            date: '2017-31-01T00:00:00'
+          }
+        }).toJSON()).to.deep.equal({
+          range: {
+            field: {
+              lte: '2017-31-01T00:00:00'
+            }
+          }
+        });
+      });
+
+      test('_buildDateRangeQuery does return correct query with both start and end date', function() {
+        element.callback.dates = function(object) {
+          return [(object.start ? object.start.date : null), (object.end ? object.end.date : null)];
+        };
+
+        expect(element._buildDateRangeQuery('field', {
+          end: {
+            date: '2017-31-01T00:00:00'
+          },
+          start: {
+            date: '2017-01-01T00:00:00'
+          }
+        }).toJSON()).to.deep.equal({
+          range: {
+            field: {
+              gte: '2017-01-01T00:00:00',
+              lte: '2017-31-01T00:00:00'
+            }
+          }
+        });
+      });
+
+      test('_buildDefaultQuery does return correct query', function() {
+        expect(element._buildDefaultQuery().toJSON()).to.deep.equal({
+          'match_all': {}
+        });
+      });
+
+      test('_buildMatchQuery does return null if callback.terms is undefined', function() {
+        expect(element._buildMatchQuery('field', {
+          values: ['value1']
+        })).to.be.null;
+      });
+
+      test('_buildMatchQuery does return null if terms are undefined', function() {
+        element.callback.terms = function(object) {
+          return object.values;
+        };
+
+        expect(element._buildMatchQuery('field', {})).to.be.null;
+      });
+
+      test('_buildMatchQuery does return null if terms are empty', function() {
+        element.callback.terms = function(object) {
+          return object.values;
+        };
+
+        expect(element._buildMatchQuery('field', {
+          values: []
+        })).to.be.null;
+      });
+
+      test('_buildMatchQuery does return correct match query', function() {
+        element.callback.terms = function(object) {
+          return object.values;
+        };
+
+        expect(element._buildMatchQuery('field', {
+          values: ['value1']
+        }).toJSON()).to.deep.equal({
+          match: {
+            field: {
+              query: 'value1'
+            }
+          }
+        });
+      });
+
+      test('_buildMatchQuery does return correct boolean query', function() {
+        element.callback.terms = function(object) {
+          return object.values;
+        };
+
+        expect(element._buildMatchQuery('field', {
+          values: ['value1', 'value2']
+        }).toJSON()).to.deep.equal({
+          bool: {
+            must: [{
+              match: {
+                field: {
+                  query: 'value1'
+                }
+              }
+            }, {
+              match: {
+                field: {
+                  query: 'value2'
+                }
+              }
+            }]
+          }
+        });
+      });
+    });
+
+    suite('query-builder query tests', function() {
+      var element;
+
+      setup(function() {
+        element = fixture('query-builder-fixture');
+
+        element.config = {
+          string: {
+            field: 'stringField'
+          },
+          number: {
+            field: 'numberField',
+            type: 'number'
+          },
+          date: {
+            field: 'dateField',
+            type: 'date'
+          }
+        };
+
+        element.data = {
+          string: {},
+          number: {},
+          date: {}
+        };
+
+        element.callback = {
+          dates: function(object) {
+            return [(object.start ? object.start.date : null), (object.end ? object.end.date : null)];
+          },
+          terms: function(object) {
+            return object.values;
+          }
+        };
+      });
+
+      test('query is null by default', function() {
+        expect(element.query).to.be.null;
+      });
+
+      test('query is null if query terms are empty', function() {
+        element.set('data.string', {
+          values: []
+        });
+        element.set('data.number', {
+          values: []
+        });
+        element.set('data.date', {
+          start: {},
+          end: {}
+        });
+
+        expect(element.query).to.be.null;
+      });
+
+      test('match query is built correctly with string data', function() {
+        element.set('data.string', {
+          values: ['value1']
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          match: {
+            stringField: {
+              query: 'value1'
+            }
+          }
+        });
+      });
+
+      test('boolean query is built correctly with string data', function() {
+        element.set('data.string', {
+          values: ['value1', 'value2']
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          bool: {
+            must: [{
+              match: {
+                stringField: {
+                  query: 'value1'
+                }
+              }
+            }, {
+              match: {
+                stringField: {
+                  query: 'value2'
+                }
+              }
+            }]
+          }
+        });
+      });
+
+      test('match query is built correctly with number data', function() {
+        element.set('data.number', {
+          values: [1]
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          match: {
+            numberField: {
+              query: 1
+            }
+          }
+        });
+      });
+
+      test('boolean query is built correctly with number data', function() {
+        element.set('data.number', {
+          values: [1, 2]
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          bool: {
+            must: [{
+              match: {
+                numberField: {
+                  query: 1
+                }
+              }
+            }, {
+              match: {
+                numberField: {
+                  query: 2
+                }
+              }
+            }]
+          }
+        });
+      });
+
+      test('range query is built correctly with date data', function() {
+        element.set('data.date', {
+          end: {
+            date: '2017-31-01T00:00:00'
+          },
+          start: {
+            date: '2017-01-01T00:00:00'
+          }
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          range: {
+            dateField: {
+              gte: '2017-01-01T00:00:00',
+              lte: '2017-31-01T00:00:00'
+            }
+          }
+        });
+      });
+
+      test('bool query is built correctly with string, number, and date data', function() {
+        element.set('data', {
+          string: {
+            values: ['value1', 'value2']
+          },
+          number: {
+            values: [1, 2]
+          },
+          date: {
+            end: {
+              date: '2017-31-01T00:00:00'
+            },
+            start: {
+              date: '2017-01-01T00:00:00'
+            }
+          }
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          bool: {
+            must: [{
+              bool: {
+                must: [{
+                  match: {
+                    stringField: {
+                      query: 'value1'
+                    }
+                  }
+                }, {
+                  match: {
+                    stringField: {
+                      query: 'value2'
+                    }
+                  }
+                }]
+              }
+            }, {
+              bool: {
+                must: [{
+                  match: {
+                    numberField: {
+                      query: 1
+                    }
+                  }
+                }, {
+                  match: {
+                    numberField: {
+                      query: 2
+                    }
+                  }
+                }]
+              }
+            }, {
+              range: {
+                dateField: {
+                  gte: '2017-01-01T00:00:00',
+                  lte: '2017-31-01T00:00:00'
+                }
+              }
+            }]
+          }
+        });
+      });
+
+      test('query is only set once', function(done) {
+        var called = 0;
+        element.onQueryChange = function() {
+          ++called;
+          if(called > 1) {
+            expect.fail();
+          }
+          expect(element.query).to.exist;
+          expect(element.query.toJSON()).to.deep.equal({
+            bool: {
+              must: [{
+                bool: {
+                  must: [{
+                    match: {
+                      stringField: {
+                        query: 'value1'
+                      }
+                    }
+                  }, {
+                    match: {
+                      stringField: {
+                        query: 'value2'
+                      }
+                    }
+                  }]
+                }
+              }, {
+                bool: {
+                  must: [{
+                    match: {
+                      numberField: {
+                        query: 1
+                      }
+                    }
+                  }, {
+                    match: {
+                      numberField: {
+                        query: 2
+                      }
+                    }
+                  }]
+                }
+              }, {
+                range: {
+                  dateField: {
+                    gte: '2017-01-01T00:00:00',
+                    lte: '2017-31-01T00:00:00'
+                  }
+                }
+              }]
+            }
+          });
+          done();
+        };
+
+        element.listen(element, 'query-changed', 'onQueryChange');
+
+        element.set('data', {
+          string: {
+            values: ['value1', 'value2']
+          },
+          number: {
+            values: [1, 2]
+          },
+          date: {
+            end: {
+              date: '2017-31-01T00:00:00'
+            },
+            start: {
+              date: '2017-01-01T00:00:00'
+            }
+          }
+        });
+      });
+
+      test('query is updated correctly with updated query terms', function() {
+        element.set('data.string', {
+          values: ['value1']
+        });
+
+        expect(element.query).to.exist;
+
+        element.set('data.string', {
+          values: ['value1', 'value2']
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          bool: {
+            must: [{
+              match: {
+                stringField: {
+                  query: 'value1'
+                }
+              }
+            }, {
+              match: {
+                stringField: {
+                  query: 'value2'
+                }
+              }
+            }]
+          }
+        });
+      });
+
+      test('query is updated correctly with changed query terms', function() {
+        element.set('data.string', {
+          values: ['value1']
+        });
+
+        expect(element.query).to.exist;
+
+        element.set('data.string', {
+          values: ['value2']
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          match: {
+            stringField: {
+              query: 'value2'
+            }
+          }
+        });
+      });
+
+      test('query is updated correctly with updated fields', function() {
+        element.set('data.string', {
+          values: ['value1']
+        });
+
+        expect(element.query).to.exist;
+
+        element.set('data.number', {
+          values: [1]
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          bool: {
+            must: [{
+              match: {
+                stringField: {
+                  query: 'value1'
+                }
+              }
+            }, {
+              match: {
+                numberField: {
+                  query: 1
+                }
+              }
+            }]
+          }
+        });
+      });
+
+      test('query is updated correctly with changed fields', function() {
+        element.set('data.string', {
+          values: ['value1']
+        });
+
+        expect(element.query).to.exist;
+
+        element.set('data', {
+          string: {},
+          number: {
+            values: [1]
+          },
+          date: {}
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          match: {
+            numberField: {
+              query: 1
+            }
+          }
+        });
+      });
+
+      test('query is not updated if the newly built query is equal', function() {
+        element.set('data.string', {
+          values: ['value1']
+        });
+
+        expect(element.query).to.exist;
+        var query = element.query;
+
+        element.onQueryChange = function() {
+          expect.fail();
+        };
+
+        element.listen(element, 'query-changed', 'onQueryChange');
+
+        element.set('data.string', {
+          values: ['value1']
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query).to.deep.equal(query);
+      });
+
+      test('query is set to null if query terms are deleted', function() {
+        element.set('data.string', {
+          values: ['value1']
+        });
+
+        expect(element.query).to.exist;
+
+        element.set('data.string', {});
+
+        expect(element.query).to.be.null;
+      });
+
+      test('match all query is built with no query terms if matchAll=true', function() {
+        element.matchAll = true;
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          'match_all': {}
+        });
+      });
+
+      test('match all query is not built if query terms exist', function() {
+        element.matchAll = true;
+
+        element.set('data.string', {
+          values: ['value1']
+        });
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          match: {
+            stringField: {
+              query: 'value1'
+            }
+          }
+        });
+      });
+
+      test('match all query is built if query terms are deleted and matchAll=true', function() {
+        element.matchAll = true;
+
+        element.set('data.string', {
+          values: ['value1']
+        });
+
+        expect(element.query).to.exist;
+
+        element.set('data.string', {});
+
+        expect(element.query).to.exist;
+        expect(element.query.toJSON()).to.deep.equal({
+          'match_all': {}
+        });
+      });
+    });
+  </script>
+</body>
+</html>

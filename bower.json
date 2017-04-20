@@ -1,0 +1,27 @@
+{
+  "name": "query-builder",
+  "description": "A Polymer Element that builds an elasticsearch query object using given config and data.",
+  "version": "1.0.0",
+  "authors": ["Next Century Corporation"],
+  "license": "Apache-2.0",
+  "keywords": [
+    "web-component",
+    "polymer"
+  ],
+  "main": "query-builder.html",
+  "license": "http://polymer.github.io/LICENSE.txt",
+  "homepage": "https://github.com/DigElements/query-builder/",
+  "ignore": [
+    "/.*",
+    "/test/"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.7.0",
+    "elastic-client-query-builder": "DigElements/elastic-client-query-builder#^1.0.8",
+    "lodash-import": "DigElements/lodash-import#~1.0.1"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^1.1.7",
+    "web-component-tester": "^5.0.0"
+  }
+}

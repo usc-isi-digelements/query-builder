@@ -1,0 +1,254 @@
+<!--
+Copyright 2017 Next Century Corporation
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../elastic-client-query-builder/elastic-client-query-builder.html">
+<link rel="import" href="../lodash-import/lodash.html">
+
+<!--
+A Polymer Element that builds an elasticsearch query object using given config and data.
+
+### Example
+```html
+<query-builder 
+  callback="[[callback]]"
+  config='{"myGroup":{"field":"myField"}}'
+  data="[[data]]"
+  query="{{query}}">
+</query-builder>
+```
+
+@demo demo/index.html
+-->
+
+<dom-module id="query-builder">
+  <template>
+    <elastic-client-query-builder id="builder"></elastic-client-query-builder>
+  </template>
+
+  <script>
+  (function() {
+    /* globals _ */
+    'use strict';
+
+    Polymer({
+      is: 'query-builder',
+
+      properties: {
+        /**
+         * (Required)
+         *
+         * An object collection of callback functions to get query terms from search objects of specific types.
+         * 
+         * The callbackDates property contains a function that returns the two-element array of start and end dates using the given
+         * search object from the data object (or [null, null] by default).
+         *
+         * The callbackTerms property contains a function that returns the array of query terms using the given search object from
+         * the data object (or [] by default).
+         *
+         * @type {Object}
+         */
+        callback: {
+          type: Object
+        },
+
+        /**
+         * (Required)
+         *
+         * An object collection of unique keys from the data object mapped to config objects containing {String} field and (Optional)
+         * {String} type.  Default type is "string".  Supported types are "string", "date"
+         *
+         * @type {Object}
+         */
+        config: {
+          type: Object
+        },
+
+        /**
+         * (Required)
+         *
+         * An object collection of unique keys mapped to search objects containing query terms.
+         *
+         * @type {Object}
+         */
+        data: {
+          type: Object
+        },
+
+        /**
+         * (Optional)
+         *
+         * The property name of the dates function in the "callback" object.
+         *
+         * @type {String}
+         * @default 'dates'
+         */
+        callbackDates: {
+          type: String,
+          value: 'dates'
+        },
+
+        /**
+         * (Optional)
+         *
+         * The property name of the terms function in the "callback" object.
+         *
+         * @type {String}
+         * @default 'terms'
+         */
+        callbackTerms: {
+          type: String,
+          value: 'terms'
+        },
+
+        /**
+         * (Optional)
+         *
+         * Whether to build a Match All query by default if the data is empty.
+         *
+         * @type {Boolean}
+         * @default false
+         */
+        matchAll: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+         * (Output)
+         *
+         * The elasticsearch query.
+         *
+         * @type {Object}
+         */
+        query: {
+          computed: '_buildQuery(data.*, matchAll)',
+          notify: true,
+          type: Object,
+          value: function() {
+            return undefined;
+          }
+        }
+      },
+
+      /**
+       * Builds and returns the elasticsearch bool query using the given queries.
+       *
+       * @param {Array} queries
+       * @return {Object}
+       * @private
+       */
+      _buildBooleanQuery: function(queries) {
+        return this.$$('#builder').buildBoolQuery(queries, 'must');
+      },
+
+      /**
+       * Builds and returns the elasticsearch range query using the given field and date search data object.
+       *
+       * @param {String} field
+       * @param {Object} object
+       * @return {null|Object}
+       * @private
+       */
+      _buildDateRangeQuery: function(field, object) {
+        var dates = this.callback && this.callbackDates && this.callback[this.callbackDates] ? this.callback[this.callbackDates](object) : [null, null];
+
+        if(dates.length !== 2 || (!dates[0] && !dates[1])) {
+          return null;
+        }
+
+        return this.$$('#builder').buildDateRangeQuery(field, {
+          greater: dates[0],
+          less: dates[1]
+        });
+      },
+
+      /**
+       * Builds and returns the elasticsearch match all query.
+       *
+       * @return {Object}
+       * @private
+       */
+      _buildDefaultQuery: function() {
+        return this.$$('#builder').buildQuery('match_all');
+      },
+
+      /**
+       * Builds and returns the elasticsearch match query (or bool query of match queries) using the given field and search data object.
+       *
+       * @param {String} field
+       * @param {Object} object
+       * @return {null|Object}
+       * @private
+       */
+      _buildMatchQuery: function(field, object) {
+        var terms = this.callback && this.callbackTerms && this.callback[this.callbackTerms] ? this.callback[this.callbackTerms](object) : [];
+
+        if(!terms || !terms.length) {
+          return null;
+        }
+
+        if(terms.length === 1) {
+          return this.$$('#builder').buildQuery('match', field, terms[0]);
+        }
+
+        var self = this;
+        var queries = [];
+        terms.forEach(function(term) {
+          queries.push(self.$$('#builder').buildQuery('match', field, term));
+        });
+
+        return this._buildBooleanQuery(queries);
+      },
+
+      /**
+       * Builds and returns the elasticsearch query object (or null).
+       *
+       * @return {null|Object}
+       * @private
+       */
+      _buildQuery: function() {
+        if(!this.config) {
+          return null;
+        }
+
+        var self = this;
+        var queries = [];
+
+        _.keys(this.data).forEach(function(key) {
+          if(self.config[key] && self.config[key].field && self.data[key]) {
+            var type = self.config[key].type;
+            var field = self.config[key].field;
+            var object = self.data[key];
+            var query = (type === 'date' ? self._buildDateRangeQuery(field, object) : self._buildMatchQuery(field, object));
+            if(query) {
+              queries.push(query);
+            }
+          }
+        });
+
+        if(!queries.length && !this.matchAll) {
+          return null;
+        }
+
+        var newQuery = !queries.length ? this._buildDefaultQuery() : (queries.length === 1 ? queries[0] : this._buildBooleanQuery(queries));
+        var difference = !this.query || !_.isEqual(newQuery.toJSON(), this.query.toJSON());
+        return difference ? newQuery : this.query;
+      }
+    });
+  })();
+  </script>
+</dom-module>
