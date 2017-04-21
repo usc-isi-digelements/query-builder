@@ -20,31 +20,30 @@ callback = {
 };
 
 config = {
-  myStringGroup: {
+  myKey1: {
     field: 'myStringField'
   },
-  myNumberGroup: {
+  myKey2: {
     field: 'myNumberField'
   },
-  myDateGroup: {
+  myKey3: {
     field: 'myDateField',
     type: 'date'
   }
 };
 
 data = {
-  myStringGroup: {
+  myKey1: {
     value: ['myValue']
   },
-  myNumberGroup: {
-    value: [1, 2]
+  myKey2: {
+    value: [1, 2, 3]
   },
-  myDateGroup: {
+  myKey3: {
     start: 'myDate1',
     end: 'myDate2'
   }
 };
-
 ```
 
 ```html

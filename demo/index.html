@@ -31,13 +31,13 @@ limitations under the License.
     <h3>Demo #1</h3>
     <p>Data: [[stringify(noData)]]</p>
     <p>Match All: false</p>
-    <p>Query: [[stringify(query5)]]</p>
+    <p>Query: [[stringify(noDataQuery)]]</p>
 
     <query-builder
       callback="[[callback]]"
       config="[[config]]"
       data="[[noData]]"
-      query="{{query5}}">
+      query="{{noDataQuery}}">
     </query-builder>
 
     <h3>Demo #2</h3>
@@ -87,14 +87,14 @@ limitations under the License.
     <h3>Demo #6</h3>
     <p>Data: [[stringify(noData)]]</p>
     <p>Match All: true</p>
-    <p>Query: [[stringify(query6)]]</p>
+    <p>Query: [[stringify(matchAllQuery)]]</p>
 
     <query-builder
       callback="[[callback]]"
       config="[[config]]"
       data="[[noData]]"
       match-all
-      query="{{query6}}">
+      query="{{matchAllQuery}}">
     </query-builder>
   </template>
 
@@ -112,13 +112,13 @@ limitations under the License.
       };
 
       demo.config = {
-        myStringGroup: {
+        myKey1: {
           field: 'myStringField'
         },
-        myNumberGroup: {
+        myKey2: {
           field: 'myNumberField'
         },
-        myDateGroup: {
+        myKey3: {
           field: 'myDateField',
           type: 'date'
         }
@@ -127,31 +127,31 @@ limitations under the License.
       demo.noData = {};
 
       demo.data1 = {
-        myStringGroup: {
+        myKey1: {
           value: ['myValue']
         }
       };
 
       demo.data2 = {
-        myStringGroup: {
+        myKey1: {
           value: ['myValue1', 'myValue2']
         }
       };
 
       demo.data3 = {
-        myDateGroup: {
+        myKey3: {
           start: 'myDate'
         }
       };
 
       demo.data4 = {
-        myStringGroup: {
+        myKey1: {
           value: ['myValue1', 'myValue2']
         },
-        myNumberGroup: {
+        myKey2: {
           value: [1, 2]
         },
-        myDateGroup: {
+        myKey3: {
           start: 'myDate1',
           end: 'myDate2'
         }
