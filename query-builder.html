@@ -194,11 +194,12 @@ data = {
        * Builds and returns the elasticsearch bool query using the given queries.
        *
        * @param {Array} queries
+       * @param {String} boolFunctionName
        * @return {Object}
        * @private
        */
-      _buildBooleanQuery: function(queries) {
-        return this.$$('#builder').buildBoolQuery(queries, 'must');
+      _buildBooleanQuery: function(queries, boolFunctionName) {
+        return this.$$('#builder').buildBoolQuery(queries, boolFunctionName);
       },
 
       /**
@@ -257,7 +258,7 @@ data = {
           queries.push(self.$$('#builder').buildQuery('match', field, term));
         });
 
-        return this._buildBooleanQuery(queries);
+        return this._buildBooleanQuery(queries, 'should');
       },
 
       /**
@@ -290,7 +291,7 @@ data = {
           return null;
         }
 
-        var newQuery = !queries.length ? this._buildDefaultQuery() : (queries.length === 1 ? queries[0] : this._buildBooleanQuery(queries));
+        var newQuery = !queries.length ? this._buildDefaultQuery() : (queries.length === 1 ? queries[0] : this._buildBooleanQuery(queries, 'must'));
         var difference = !this.query || !_.isEqual(newQuery.toJSON(), this.query.toJSON());
         return difference ? newQuery : this.query;
       }
