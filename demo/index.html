@@ -18,149 +18,151 @@ limitations under the License.
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
-  <script src="../../webcomponentsjs/webcomponents-lite.min.js"></script>
+  <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
   <link rel="import" href="../query-builder.html">
 </head>
 
 <body unresolved>
-  <template is="dom-bind" id="demo">
-    <p>Dates Callback: [[callback.dates]]</p>
-    <p>Terms Callback: [[callback.terms]]</p>
-    <p>Config: [[stringify(config)]]</p>
+  <dom-bind id="demo">
+    <script>
+      (function(document) {
+        var demo = document.querySelector('dom-bind');
 
-    <h3>Demo #1</h3>
-    <p>Data: [[stringify(noData)]]</p>
-    <p>Match All: false</p>
-    <p>Query: [[stringify(noDataQuery)]]</p>
+        demo.callback = {
+          dates: function(object) {
+            return [object.start, object.end];
+          },
+          terms: function(object) {
+            return object.value;
+          }
+        };
 
-    <query-builder
-      callback="[[callback]]"
-      config="[[config]]"
-      data="[[noData]]"
-      query="{{noDataQuery}}">
-    </query-builder>
+        demo.config = {
+          myKey1: {
+            field: 'myStringField'
+          },
+          myKey2: {
+            field: 'myNumberField'
+          },
+          myKey3: {
+            field: 'myDateField',
+            type: 'date'
+          }
+        };
 
-    <h3>Demo #2</h3>
-    <p>Data: [[stringify(data1)]]</p>
-    <p>Query: [[stringify(query1)]]</p>
+        demo.noData = {};
 
-    <query-builder
-      callback="[[callback]]"
-      config="[[config]]"
-      data="[[data1]]"
-      query="{{query1}}">
-    </query-builder>
+        demo.data1 = {
+          myKey1: {
+            value: ['myValue']
+          }
+        };
 
-    <h3>Demo #3</h3>
-    <p>Data: [[stringify(data2)]]</p>
-    <p>Query: [[stringify(query2)]]</p>
+        demo.data2 = {
+          myKey1: {
+            value: ['myValue1', 'myValue2']
+          }
+        };
 
-    <query-builder
-      callback="[[callback]]"
-      config="[[config]]"
-      data="[[data2]]"
-      query="{{query2}}">
-    </query-builder>
+        demo.data3 = {
+          myKey3: {
+            start: 'myDate'
+          }
+        };
 
-    <h3>Demo #4</h3>
-    <p>Data: [[stringify(data3)]]</p>
-    <p>Query: [[stringify(query3)]]</p>
+        demo.data4 = {
+          myKey1: {
+            value: ['myValue1', 'myValue2']
+          },
+          myKey2: {
+            value: [1, 2]
+          },
+          myKey3: {
+            start: 'myDate1',
+            end: 'myDate2'
+          }
+        };
 
-    <query-builder
-      callback="[[callback]]"
-      config="[[config]]"
-      data="[[data3]]"
-      query="{{query3}}">
-    </query-builder>
+        demo.stringify = function(object) {
+          return JSON.stringify(object);
+        };
+      })(document);
+    </script>
 
-    <h3>Demo #5</h3>
-    <p>Data: [[stringify(data4)]]</p>
-    <p>Query: [[stringify(query4)]]</p>
+    <template is="dom-bind">
+      <p>Dates Callback: [[callback.dates]]</p>
+      <p>Terms Callback: [[callback.terms]]</p>
+      <p>Config: [[stringify(config)]]</p>
 
-    <query-builder
-      callback="[[callback]]"
-      config="[[config]]"
-      data="[[data4]]"
-      query="{{query4}}">
-    </query-builder>
+      <h3>Demo #1</h3>
+      <p>Data: [[stringify(noData)]]</p>
+      <p>Match All: false</p>
+      <p>Query: [[stringify(noDataQuery)]]</p>
 
-    <h3>Demo #6</h3>
-    <p>Data: [[stringify(noData)]]</p>
-    <p>Match All: true</p>
-    <p>Query: [[stringify(matchAllQuery)]]</p>
+      <query-builder
+        callback="[[callback]]"
+        config="[[config]]"
+        data="[[noData]]"
+        query="{{noDataQuery}}">
+      </query-builder>
 
-    <query-builder
-      callback="[[callback]]"
-      config="[[config]]"
-      data="[[noData]]"
-      match-all
-      query="{{matchAllQuery}}">
-    </query-builder>
-  </template>
+      <h3>Demo #2</h3>
+      <p>Data: [[stringify(data1)]]</p>
+      <p>Query: [[stringify(query1)]]</p>
 
-  <script>
-    (function(document) {
-      var demo = document.querySelector('#demo');
+      <query-builder
+        callback="[[callback]]"
+        config="[[config]]"
+        data="[[data1]]"
+        query="{{query1}}">
+      </query-builder>
 
-      demo.callback = {
-        dates: function(object) {
-          return [object.start, object.end];
-        },
-        terms: function(object) {
-          return object.value;
-        }
-      };
+      <h3>Demo #3</h3>
+      <p>Data: [[stringify(data2)]]</p>
+      <p>Query: [[stringify(query2)]]</p>
 
-      demo.config = {
-        myKey1: {
-          field: 'myStringField'
-        },
-        myKey2: {
-          field: 'myNumberField'
-        },
-        myKey3: {
-          field: 'myDateField',
-          type: 'date'
-        }
-      };
+      <query-builder
+        callback="[[callback]]"
+        config="[[config]]"
+        data="[[data2]]"
+        query="{{query2}}">
+      </query-builder>
 
-      demo.noData = {};
+      <h3>Demo #4</h3>
+      <p>Data: [[stringify(data3)]]</p>
+      <p>Query: [[stringify(query3)]]</p>
 
-      demo.data1 = {
-        myKey1: {
-          value: ['myValue']
-        }
-      };
+      <query-builder
+        callback="[[callback]]"
+        config="[[config]]"
+        data="[[data3]]"
+        query="{{query3}}">
+      </query-builder>
 
-      demo.data2 = {
-        myKey1: {
-          value: ['myValue1', 'myValue2']
-        }
-      };
+      <h3>Demo #5</h3>
+      <p>Data: [[stringify(data4)]]</p>
+      <p>Query: [[stringify(query4)]]</p>
 
-      demo.data3 = {
-        myKey3: {
-          start: 'myDate'
-        }
-      };
+      <query-builder
+        callback="[[callback]]"
+        config="[[config]]"
+        data="[[data4]]"
+        query="{{query4}}">
+      </query-builder>
 
-      demo.data4 = {
-        myKey1: {
-          value: ['myValue1', 'myValue2']
-        },
-        myKey2: {
-          value: [1, 2]
-        },
-        myKey3: {
-          start: 'myDate1',
-          end: 'myDate2'
-        }
-      };
+      <h3>Demo #6</h3>
+      <p>Data: [[stringify(noData)]]</p>
+      <p>Match All: true</p>
+      <p>Query: [[stringify(matchAllQuery)]]</p>
 
-      demo.stringify = function(object) {
-        return JSON.stringify(object);
-      };
-    })(document);
-  </script>
+      <query-builder
+        callback="[[callback]]"
+        config="[[config]]"
+        data="[[noData]]"
+        match-all
+        query="{{matchAllQuery}}">
+      </query-builder>
+    </template>
+  </dom-bind>
 </body>
 </html>
