@@ -34,14 +34,14 @@ config = {
 
 data = {
   myKey1: {
-    value: ['myValue']
+    value: ['string']
   },
   myKey2: {
     value: [1, 2, 3]
   },
   myKey3: {
-    start: 'myDate1',
-    end: 'myDate2'
+    start: 'startDate',
+    end: 'endDate'
   }
 };
 ```

@@ -56,6 +56,29 @@ limitations under the License.
         expect(element.$$('elastic-client-query-builder').id).to.equal('builder');
       });
 
+      test('_buildQuery does return null if config is undefined', function() {
+        expect(element._buildQuery()).to.be.null;
+      });
+
+      test('_buildQuery does return null if data is undefined', function() {
+        element.config = {};
+        expect(element._buildQuery()).to.be.null;
+      });
+
+      test('_buildQuery does return null if data is an object with no properties', function() {
+        element.config = {};
+        element.data = {};
+        expect(element._buildQuery()).to.be.null;
+      });
+
+      test('_buildQuery does return the default query if data is undefined and matchAll is true', function() {
+        element.config = {};
+        element.matchAll = true;
+        expect(element._buildQuery().toJSON()).to.deep.equal({
+          'match_all': {}
+        });
+      });
+
       test('_buildBooleanQuery does return correct query', function() {
         var queries = [
           element.$$('#builder').buildQuery('match', 'field', 'value'),
