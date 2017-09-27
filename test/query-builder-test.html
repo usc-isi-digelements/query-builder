@@ -31,7 +31,7 @@ limitations under the License.
   </test-fixture>
 
   <script>
-    /* globals suite, setup, fixture, test, expect, flush */
+    /* globals suite, setup, fixture, test, flush, expect, assert */
     /* jshint -W030 */
 
     suite('query-builder private tests', function() {
@@ -39,12 +39,15 @@ limitations under the License.
 
       setup(function() {
         element = fixture('query-builder-fixture');
-        element.callback = {};
       });
 
-      test('default properties are set correctly', function() {
+      test('properties are set as expected', function() {
+        expect(element.callback).to.be.an('Object');
+        expect(element.callback.dates).to.deep.equal(element._getDates);
+        expect(element.callback.terms).to.deep.equal(element._getTerms);
         expect(element.config).to.not.exist;
         expect(element.data).to.not.exist;
+        expect(element.dateFields).to.not.exist;
         expect(element.callbackDates).to.equal('dates');
         expect(element.callbackTerms).to.equal('terms');
         expect(element.matchAll).to.be.false;
@@ -105,6 +108,7 @@ limitations under the License.
       });
 
       test('_buildDateRangeQuery does return null if callback.dates is undefined', function() {
+        element.callback = {};
         expect(element._buildDateRangeQuery('field', {
           start: {
             date: '2017-01-01T00:00:00'
@@ -113,16 +117,30 @@ limitations under the License.
       });
 
       test('_buildDateRangeQuery does return null if both start and end date are undefined', function() {
-        element.callback.dates = function(object) {
-          return [(object.start ? object.start.date : null), (object.end ? object.end.date : null)];
+        element.dateFields = {
+          field: {
+            start: 'start',
+            end: 'end'
+          }
+        };
+
+        element.callback.dates = function(object, config) {
+          return [(object[config.start] ? object[config.start].date : null), (object[config.end] ? object[config.end].date : null)];
         };
 
         expect(element._buildDateRangeQuery('field', {})).to.be.null;
       });
 
       test('_buildDateRangeQuery does return correct query with start date', function() {
-        element.callback.dates = function(object) {
-          return [(object.start ? object.start.date : null), (object.end ? object.end.date : null)];
+        element.dateFields = {
+          field: {
+            start: 'start',
+            end: 'end'
+          }
+        };
+
+        element.callback.dates = function(object, config) {
+          return [(object[config.start] ? object[config.start].date : null), (object[config.end] ? object[config.end].date : null)];
         };
 
         expect(element._buildDateRangeQuery('field', {
@@ -139,8 +157,15 @@ limitations under the License.
       });
 
       test('_buildDateRangeQuery does return correct query with end date', function() {
-        element.callback.dates = function(object) {
-          return [(object.start ? object.start.date : null), (object.end ? object.end.date : null)];
+        element.dateFields = {
+          field: {
+            start: 'start',
+            end: 'end'
+          }
+        };
+
+        element.callback.dates = function(object, config) {
+          return [(object[config.start] ? object[config.start].date : null), (object[config.end] ? object[config.end].date : null)];
         };
 
         expect(element._buildDateRangeQuery('field', {
@@ -157,8 +182,15 @@ limitations under the License.
       });
 
       test('_buildDateRangeQuery does return correct query with both start and end date', function() {
-        element.callback.dates = function(object) {
-          return [(object.start ? object.start.date : null), (object.end ? object.end.date : null)];
+        element.dateFields = {
+          field: {
+            start: 'start',
+            end: 'end'
+          }
+        };
+
+        element.callback.dates = function(object, config) {
+          return [(object[config.start] ? object[config.start].date : null), (object[config.end] ? object[config.end].date : null)];
         };
 
         expect(element._buildDateRangeQuery('field', {
@@ -185,6 +217,7 @@ limitations under the License.
       });
 
       test('_buildMatchQuery does return null if callback.terms is undefined', function() {
+        element.callback = {};
         expect(element._buildMatchQuery('field', {
           values: ['value1']
         })).to.be.null;
@@ -249,6 +282,128 @@ limitations under the License.
             }]
           }
         });
+      });
+
+      test('_getDates does return an array of nulls if dates are not defined or not enabled', function() {
+        assert.deepEqual(element._getDates({}, {
+          start: 'start',
+          end: 'end'
+        }), [null, null]);
+
+        assert.deepEqual(element._getDates({
+          other: {
+            enabled: true,
+            date: '2017-01-01T00:00:00'
+          }
+        }, {
+          start: 'start',
+          end: 'end'
+        }), [null, null]);
+
+        assert.deepEqual(element._getDates({
+          start: {
+            enabled: false,
+            date: '2017-01-01T00:00:00'
+          }
+        }, {
+          start: 'start',
+          end: 'end'
+        }), [null, null]);
+
+        assert.deepEqual(element._getDates({
+          end: {
+            enabled: false,
+            date: '2017-02-01T00:00:00'
+          }
+        }, {
+          start: 'start',
+          end: 'end'
+        }), [null, null]);
+
+        assert.deepEqual(element._getDates({
+          start: {
+            enabled: false,
+            date: '2017-01-01T00:00:00'
+          },
+          end: {
+            enabled: false,
+            date: '2017-02-01T00:00:00'
+          }
+        }, {
+          start: 'start',
+          end: 'end'
+        }), [null, null]);
+      });
+
+      test('_getDates does return an array of dates if dates are defined and enabled', function() {
+        assert.deepEqual(element._getDates({
+          start: {
+            enabled: true,
+            date: '2017-01-01T00:00:00'
+          }
+        }, {
+          start: 'start',
+          end: 'end'
+        }), ['2017-01-01T00:00:00', null]);
+
+        assert.deepEqual(element._getDates({
+          end: {
+            enabled: true,
+            date: '2017-02-01T00:00:00'
+          }
+        }, {
+          start: 'start',
+          end: 'end'
+        }), [null, '2017-02-01T00:00:00']);
+
+        assert.deepEqual(element._getDates({
+          start: {
+            enabled: true,
+            date: '2017-01-01T00:00:00'
+          },
+          end: {
+            enabled: true,
+            date: '2017-02-01T00:00:00'
+          }
+        }, {
+          start: 'start',
+          end: 'end'
+        }), ['2017-01-01T00:00:00', '2017-02-01T00:00:00']);
+      });
+
+      test('_getTerms does return an empty array if terms are not defined or not enabled', function() {
+        assert.deepEqual(element._getTerms({}), []);
+
+        assert.deepEqual(element._getTerms({
+          123: {
+            key: '123',
+            enabled: false
+          }
+        }), []);
+      });
+
+      test('_getTerms does return a non-empty array if terms are defined and enabled', function() {
+        assert.deepEqual(element._getTerms({
+          123: {
+            key: '123',
+            enabled: true
+          }
+        }), ['123']);
+
+        assert.deepEqual(element._getTerms({
+          123: {
+            key: '123',
+            enabled: true
+          },
+          456: {
+            key: '456',
+            enabled: false
+          },
+          789: {
+            key: '789',
+            enabled: true
+          }
+        }), ['123', '789']);
       });
     });
 

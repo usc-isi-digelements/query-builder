@@ -92,21 +92,54 @@ data = {
 
       properties: {
         /**
-         * (Required)
+         * (Optional)
          *
          * An object containing callback functions with properties defined by `callbackDates` (default `dates`) and `callbackTerms` (default
          * `terms`) that return query terms from search objects of specific types.
          * 
          * The dates property contains a function that returns the two-element array of start and end dates (as date strings or null) using
-         * the given search object from `data` (or `[null, null]` by default).
+         * the given search object from `data` (or `[null, null]` by default).  The second argument is an object from `dateFields`.
          *
          * The terms property contains a function that returns the array of query terms using the given search object from `data` (or `[]`
          * by default).
          *
          * @type {Object}
+         * @default { dates: this._getDates, terms: this._getTerms }
          */
         callback: {
-          type: Object
+          type: Object,
+          value: function() {
+            return {
+              dates: this._getDates,
+              terms: this._getTerms
+            };
+          }
+        },
+
+        /**
+         * (Optional)
+         *
+         * The property name of the dates function in the "callback" object.
+         *
+         * @type {String}
+         * @default 'dates'
+         */
+        callbackDates: {
+          type: String,
+          value: 'dates'
+        },
+
+        /**
+         * (Optional)
+         *
+         * The property name of the terms function in the "callback" object.
+         *
+         * @type {String}
+         * @default 'terms'
+         */
+        callbackTerms: {
+          type: String,
+          value: 'terms'
         },
 
         /**
@@ -134,29 +167,14 @@ data = {
         },
 
         /**
-         * (Optional)
+         * (Required)
          *
-         * The property name of the dates function in the "callback" object.
+         * A collection of date fields mapped to objects containing the {String} `start` and {String} `end` property of each date.
          *
-         * @type {String}
-         * @default 'dates'
+         * @type {Object}
          */
-        callbackDates: {
-          type: String,
-          value: 'dates'
-        },
-
-        /**
-         * (Optional)
-         *
-         * The property name of the terms function in the "callback" object.
-         *
-         * @type {String}
-         * @default 'terms'
-         */
-        callbackTerms: {
-          type: String,
-          value: 'terms'
+        dateFields: {
+          type: Object
         },
 
         /**
@@ -210,7 +228,7 @@ data = {
        * @private
        */
       _buildDateRangeQuery: function(field, object) {
-        var dates = this.callback && this.callbackDates && this.callback[this.callbackDates] ? this.callback[this.callbackDates](object) : [null, null];
+        var dates = this.callback && this.callbackDates && this.callback[this.callbackDates] ? this.callback[this.callbackDates](object, (this.dateFields ? this.dateFields[field] : null)) : [null, null];
 
         if(dates.length !== 2 || (!dates[0] && !dates[1])) {
           return null;
@@ -293,6 +311,32 @@ data = {
         var newQuery = !queries.length ? this._buildDefaultQuery() : (queries.length === 1 ? queries[0] : this._buildBooleanQuery(queries, 'must'));
         var difference = !this.query || !_.isEqual(newQuery.toJSON(), this.query.toJSON());
         return difference ? newQuery : this.query;
+      },
+
+      /**
+       * Returns the two-element array of start and end dates from the given date filter object.
+       * If a start or end date is not set or enabled the array will have null at that index.
+       *
+       * @param {Object} object
+       * @param {Array} config
+       * @return {Array}
+       */
+      _getDates: function(object, config) {
+        var start = config && config.start && object[config.start] && object[config.start].enabled ? object[config.start].date : null;
+        var end = config && config.end && object[config.end] && object[config.end].enabled ? object[config.end].date : null;
+        return [start, end];
+      },
+
+      /**
+       * Returns the array of enabled query terms from the given filter object.
+       *
+       * @param {Object} object
+       * @return {Array}
+       */
+      _getTerms: function(object) {
+        return _.keys(object).filter(function(key) {
+          return object[key].enabled;
+        });
       }
     });
   })();
