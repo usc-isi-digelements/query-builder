@@ -216,37 +216,37 @@ limitations under the License.
         });
       });
 
-      test('_buildMatchQuery does return null if callback.terms is undefined', function() {
+      test('_buildTextQuery does return null if callback.terms is undefined', function() {
         element.callback = {};
-        expect(element._buildMatchQuery('field', {
+        expect(element._buildTextQuery('match', 'field', {
           values: ['value1']
         })).to.be.null;
       });
 
-      test('_buildMatchQuery does return null if terms are undefined', function() {
+      test('_buildTextQuery does return null if terms are undefined', function() {
         element.callback.terms = function(object) {
           return object.values;
         };
 
-        expect(element._buildMatchQuery('field', {})).to.be.null;
+        expect(element._buildTextQuery('match', 'field', {})).to.be.null;
       });
 
-      test('_buildMatchQuery does return null if terms are empty', function() {
+      test('_buildTextQuery does return null if terms are empty', function() {
         element.callback.terms = function(object) {
           return object.values;
         };
 
-        expect(element._buildMatchQuery('field', {
+        expect(element._buildTextQuery('match', 'field', {
           values: []
         })).to.be.null;
       });
 
-      test('_buildMatchQuery does return correct match query', function() {
+      test('_buildTextQuery does return correct match query', function() {
         element.callback.terms = function(object) {
           return object.values;
         };
 
-        expect(element._buildMatchQuery('field', {
+        expect(element._buildTextQuery('match', 'field', {
           values: ['value1']
         }).toJSON()).to.deep.equal({
           match: {
@@ -257,12 +257,42 @@ limitations under the License.
         });
       });
 
-      test('_buildMatchQuery does return correct boolean query', function() {
+      test('_buildTextQuery does return correct term query', function() {
         element.callback.terms = function(object) {
           return object.values;
         };
 
-        expect(element._buildMatchQuery('field', {
+        expect(element._buildTextQuery('term', 'field', {
+          values: ['value1']
+        }).toJSON()).to.deep.equal({
+          term: {
+            field: {
+              term: 'value1'
+            }
+          }
+        });
+      });
+
+      test('_buildTextQuery does return correct terms query', function() {
+        element.callback.terms = function(object) {
+          return object.values;
+        };
+
+        expect(element._buildTextQuery('terms', 'field', {
+          values: ['value1']
+        }).toJSON()).to.deep.equal({
+          terms: {
+            field: ['value1']
+          }
+        });
+      });
+
+      test('_buildTextQuery does return correct boolean query', function() {
+        element.callback.terms = function(object) {
+          return object.values;
+        };
+
+        expect(element._buildTextQuery('match', 'field', {
           values: ['value1', 'value2']
         }).toJSON()).to.deep.equal({
           bool: {

@@ -204,6 +204,19 @@ data = {
           value: function() {
             return undefined;
           }
+        },
+
+        /**
+         * (Optional)
+         *
+         * An elasticsearch text query type like 'match' or 'terms'.
+         *
+         * @type {String}
+         * @default 'match'
+         */
+        type: {
+          type: String,
+          value: 'match'
         }
       },
 
@@ -251,14 +264,15 @@ data = {
       },
 
       /**
-       * Builds and returns the elasticsearch match query (or bool query of match queries) using the given field and search data object.
+       * Builds and returns the elasticsearch match or terms query (or bool query of match or terms queries) using the given field and search data object.
        *
+       * @param {String} type
        * @param {String} field
        * @param {Object} object
        * @return {null|Object}
        * @private
        */
-      _buildMatchQuery: function(field, object) {
+      _buildTextQuery: function(type, field, object) {
         var terms = this.callback && this.callbackTerms && this.callback[this.callbackTerms] ? this.callback[this.callbackTerms](object) : [];
 
         if(!terms || !terms.length) {
@@ -266,13 +280,13 @@ data = {
         }
 
         if(terms.length === 1) {
-          return this.$$('#builder').buildQuery('match', field, terms[0]);
+          return this.$$('#builder').buildQuery(type, field, terms[0]);
         }
 
         var self = this;
         var queries = [];
         terms.forEach(function(term) {
-          queries.push(self.$$('#builder').buildQuery('match', field, term));
+          queries.push(self.$$('#builder').buildQuery(type, field, term));
         });
 
         return this._buildBooleanQuery(queries, 'should');
@@ -297,7 +311,7 @@ data = {
             var type = self.config[key].type;
             var field = self.config[key].field;
             var object = self.data[key];
-            var query = (type === 'date' ? self._buildDateRangeQuery(field, object) : self._buildMatchQuery(field, object));
+            var query = (type === 'date' ? self._buildDateRangeQuery(field, object) : self._buildTextQuery(self.type, field, object));
             if(query) {
               queries.push(query);
             }
