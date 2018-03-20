@@ -15,7 +15,9 @@ callback = {
     return [object.start, object.end];
   },
   terms: function(object) {
-    return object.value;
+    return {
+      must: object.value
+    };
   }
 };
 

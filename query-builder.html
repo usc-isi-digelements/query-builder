@@ -21,9 +21,9 @@ limitations under the License.
 <!--
 A Polymer Element that builds an elasticsearch query object using given config and data.
 
-The `callback` object contains callback functions with properties defined by `callbackDates` (default `dates`) and `callbackTerms` (default `terms`) that return query terms from search objects of specific types.  The dates property contains a function that returns the two-element array of start and end dates (as date strings or null) using the given search object from `data` (or `[null, null]` by default).  The terms property contains a function that returns the array of query terms using the given search object from `data` (or `[]` by default).
+The `callback` object contains callback functions with properties defined by `callbackDates` (default `dates`) and `callbackTerms` (default `terms`) that return query terms from search objects of specific types.  The dates property contains a function that returns the two-element array of start and end dates (as date strings or null) using the given search object from `data` (or `[null, null]` by default).  The terms property contains a function that returns the properties `must`, `not`, and `should` mapped to distinct arrays of query terms using the given search object from `data` (or `[]` by default).
 
-The `config` object contains a collection of unique keys from `data` mapped to config objects with properties {String} `field` and (Optional) {String} `type`.  The default type is "string".  Supported types are "string" and "date".
+The `config` object contains a collection of unique keys from `data` mapped to config objects with properties {String} `field`, (Optional) {String} `searchType`, and (Optional) {String} `type`.  The default type is "string".
 
 The `data` object contains a collection of unique keys mapped to search objects with query terms.  The keys in `data` match the keys in `config`.  The search objects are sent to the `callback` functions.
 
@@ -34,7 +34,9 @@ callback = {
     return [object.start, object.end];
   },
   terms: function(object) {
-    return object.value;
+    return {
+      must: object.value
+    };
   }
 };
 
@@ -100,8 +102,8 @@ data = {
          * The dates property contains a function that returns the two-element array of start and end dates (as date strings or null) using
          * the given search object from `data` (or `[null, null]` by default).  The second argument is an object from `dateFields`.
          *
-         * The terms property contains a function that returns the array of query terms using the given search object from `data` (or `[]`
-         * by default).
+         * The terms property contains a function that returns the properties `must`, `not`, and `should` mapped to distinct arrays of query
+         * terms using the given search object from `data` (or `[]` by default).
          *
          * @type {Object}
          * @default { dates: this._getDates, terms: this._getTerms }
@@ -145,8 +147,8 @@ data = {
         /**
          * (Required)
          *
-         * An object containing a collection of unique keys from `data` mapped to config objects with properties {String} `field` and
-         * (Optional) {String} `type`.  The default type is "string".  Supported types are "string" and "date".
+         * An object containing a collection of unique keys from `data` mapped to config objects with properties {String} `field`,
+         * (Optional) {String} `searchType`, and (Optional) {String} `type`.  The default type is "string".
          *
          * @type {Object}
          */
@@ -198,12 +200,25 @@ data = {
          * @type {Object}
          */
         query: {
-          computed: '_buildQuery(data.*, matchAll)',
+          computed: '_buildQuery(data.*, matchAll, stop)',
           notify: true,
           type: Object,
           value: function() {
             return undefined;
           }
+        },
+
+        /**
+         * (Optional)
+         *
+         * Whether to stop building new queries.
+         *
+         * @type {Object}
+         * @default false
+         */
+        stop: {
+          type: Boolean,
+          value: false
         },
 
         /**
@@ -224,12 +239,13 @@ data = {
        * Builds and returns the elasticsearch bool query using the given queries.
        *
        * @param {Array} queries
-       * @param {String} boolFunctionName
+       * @param {String} operator
+       * @param {Object} booleanQuery (Optional)
        * @return {Object}
        * @private
        */
-      _buildBooleanQuery: function(queries, boolFunctionName) {
-        return this.$$('#builder').buildBoolQuery(queries, boolFunctionName);
+      _buildBooleanQuery: function(queries, operator, booleanQuery) {
+        return queries.length ? this.$$('#builder').buildBoolQuery(queries, operator, booleanQuery) : booleanQuery;
       },
 
       /**
@@ -244,13 +260,16 @@ data = {
         var dates = this.callback && this.callbackDates && this.callback[this.callbackDates] ? this.callback[this.callbackDates](object, (this.dateFields ? this.dateFields[field] : null)) : [null, null];
 
         if(dates.length !== 2 || (!dates[0] && !dates[1])) {
-          return null;
+          return [];
         }
 
-        return this.$$('#builder').buildDateRangeQuery(field, {
-          greater: dates[0],
-          less: dates[1]
-        });
+        return [{
+          object: this.$$('#builder').buildDateRangeQuery(field, {
+            greater: dates[0],
+            less: dates[1]
+          }),
+          operator: 'must'
+        }];
       },
 
       /**
@@ -269,27 +288,37 @@ data = {
        * @param {String} type
        * @param {String} field
        * @param {Object} object
-       * @return {null|Object}
+       * @return {Array}
        * @private
        */
-      _buildTextQuery: function(type, field, object) {
-        var terms = this.callback && this.callbackTerms && this.callback[this.callbackTerms] ? this.callback[this.callbackTerms](object) : [];
-
-        if(!terms || !terms.length) {
-          return null;
-        }
-
-        if(terms.length === 1) {
-          return this.$$('#builder').buildQuery(type, field, terms[0]);
-        }
+      _buildTextQueries: function(type, field, object) {
+        var mappedTerms = this.callback && this.callbackTerms && this.callback[this.callbackTerms] ? this.callback[this.callbackTerms](object) : [];
 
         var self = this;
         var queries = [];
-        terms.forEach(function(term) {
-          queries.push(self.$$('#builder').buildQuery(type, field, term));
+
+        (mappedTerms.must || []).forEach(function(term) {
+          queries.push({
+            object: self.$$('#builder').buildQuery(type, field, term),
+            operator: 'must'
+          });
         });
 
-        return this._buildBooleanQuery(queries, 'should');
+        (mappedTerms.not || []).forEach(function(term) {
+          queries.push({
+            object: self.$$('#builder').buildQuery(type, field, term),
+            operator: 'must_not'
+          });
+        });
+
+        (mappedTerms.should || []).forEach(function(term) {
+          queries.push({
+            object: self.$$('#builder').buildQuery(type, field, term),
+            operator: 'should'
+          });
+        });
+
+        return queries;
       },
 
       /**
@@ -299,32 +328,52 @@ data = {
        * @private
        */
       _buildQuery: function() {
-        if(!this.config) {
+        if(!this.config || this.stop) {
           return null;
         }
 
         var self = this;
-        var queries = [];
+        var queryArray = [];
 
         _.keys(this.data || {}).forEach(function(key) {
           if(self.config[key] && self.config[key].field && self.data[key]) {
-            var type = self.config[key].type;
-            var field = self.config[key].field;
-            var object = self.data[key];
-            var query = (type === 'date' ? self._buildDateRangeQuery(field, object) : self._buildTextQuery(self.type, field, object));
-            if(query) {
-              queries.push(query);
-            }
+            var configType = self.config[key].type;
+            var configQueryField = self.config[key].field;
+            var dataItem = self.data[key];
+            var textQueryType = self.config[key].searchType || self.type;
+            queryArray = queryArray.concat(configType === 'date' ? self._buildDateRangeQuery(configQueryField, dataItem) : self._buildTextQueries(textQueryType, configQueryField, dataItem));
           }
         });
 
-        if(!queries.length && !this.matchAll) {
+        if(!queryArray.length && !this.matchAll) {
           return null;
         }
 
-        var newQuery = !queries.length ? this._buildDefaultQuery() : (queries.length === 1 ? queries[0] : this._buildBooleanQuery(queries, 'must'));
-        var difference = !this.query || !_.isEqual(newQuery.toJSON(), this.query.toJSON());
-        return difference ? newQuery : this.query;
+        var query = !queryArray.length ? this._buildDefaultQuery() : queryArray[0].object;
+        if(queryArray.length > 1) {
+          // Create a new boolean query.
+          query = this._buildBooleanQuery(queryArray.filter(function(queryElement) {
+            return queryElement.operator === 'must';
+          }).map(function(queryElement) {
+            return queryElement.object;
+          }), 'must');
+
+          // Extend onto the existing boolean query.
+          query = this._buildBooleanQuery(queryArray.filter(function(queryElement) {
+            return queryElement.operator === 'must_not';
+          }).map(function(queryElement) {
+            return queryElement.object;
+          }), 'must_not', query);
+
+          // Extend onto the existing boolean query.
+          query = this._buildBooleanQuery(queryArray.filter(function(queryElement) {
+            return queryElement.operator === 'should';
+          }).map(function(queryElement) {
+            return queryElement.object;
+          }), 'should', query);
+        }
+        var difference = !this.query || !_.isEqual(query.toJSON(), this.query.toJSON());
+        return difference ? query : this.query;
       },
 
       /**
@@ -342,15 +391,26 @@ data = {
       },
 
       /**
-       * Returns the array of enabled query terms from the given filter object.
+       * Returns the properties `must`, `not`, and `should` mapped to distinct arrays of enabled query terms from the given filter object.
        *
        * @param {Object} object
        * @return {Array}
        */
       _getTerms: function(object) {
-        return _.keys(object).filter(function(key) {
+        var terms = _.keys(object).filter(function(key) {
           return object[key].enabled;
         });
+        return {
+          must: terms.filter(function(key) {
+            return object[key].search === 'required';
+          }),
+          not: terms.filter(function(key) {
+            return object[key].search === 'excluded';
+          }),
+          should: terms.filter(function(key) {
+            return object[key].search !== 'required' && object[key].search !== 'excluded';
+          })
+        };
       }
     });
   })();
