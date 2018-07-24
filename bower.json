@@ -16,7 +16,7 @@
   ],
   "dependencies": {
     "polymer": "Polymer/polymer#^2.0.2",
-    "elastic-client-query-builder": "usc-isi-digelements/elastic-client-query-builder#2.1.2",
+    "elastic-client-query-builder": "usc-isi-digelements/elastic-client-query-builder#^2.1.2",
     "lodash-import": "usc-isi-digelements/lodash-import#~1.0.1"
   },
   "devDependencies": {
